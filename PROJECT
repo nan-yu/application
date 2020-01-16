@@ -1,0 +1,7 @@
+domain: k8s.io
+repo: sigs.k8s.io/application
+resources:
+- group: app
+  kind: Application
+  version: v1beta1
+version: "2"
