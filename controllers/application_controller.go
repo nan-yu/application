@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -55,7 +57,10 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	var app appv1beta1.Application
 	err := r.Get(ctx, req.NamespacedName, &app)
 	if err != nil {
-		return ctrl.Result{}, err
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	// Application is in the process of being deleted, so no need to do anything.
@@ -65,14 +70,13 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	resources, err := r.fetchComponentListResources(ctx, app.Spec.ComponentGroupKinds, app.Spec.Selector, app.Namespace)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	if app.Spec.AddOwnerRef {
 		ownerRef := metav1.NewControllerRef(&app, appv1beta1.GroupVersion.WithKind("Application"))
-		err := r.setOwnerRefForResources(ctx, *ownerRef, resources)
-		if err != nil {
-			return ctrl.Result{}, err
+		if err := r.setOwnerRefForResources(ctx, *ownerRef, resources); err != nil {
+			return ctrl.Result{Requeue: true}, err
 		}
 	}
 
@@ -99,8 +103,10 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	}
 
 	app.Status = *newApplicationStatus
-	err = r.Client.Status().Update(ctx, &app) // Should we use retry here?
-	return ctrl.Result{}, err
+	if err = r.Client.Update(ctx, &app); err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *ApplicationReconciler) fetchComponentListResources(ctx context.Context, groupKinds []metav1.GroupKind, selector *metav1.LabelSelector, namespace string) ([]*unstructured.Unstructured, error) {
@@ -118,14 +124,12 @@ func (r *ApplicationReconciler) fetchComponentListResources(ctx context.Context,
 
 		list := &unstructured.UnstructuredList{}
 		list.SetGroupVersionKind(mapping.GroupVersionKind)
-		err = r.Client.List(ctx, list, client.InNamespace(namespace), client.MatchingLabels(selector.MatchLabels))
-		if err != nil {
+		if err = r.Client.List(ctx, list, client.InNamespace(namespace), client.MatchingLabels(selector.MatchLabels)); err != nil {
 			return resources, err
 		}
 
 		for _, u := range list.Items {
-			resource := u
-			resources = append(resources, &resource)
+			resources = append(resources, &u)
 		}
 	}
 	return resources, nil
