@@ -79,7 +79,7 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	objectStatuses := r.objectStatuses(ctx, resources)
 	aggReady := aggregateReady(objectStatuses)
 
-	newApplicationStatus := *app.Status.DeepCopy()
+	newApplicationStatus := app.Status.DeepCopy()
 
 	newApplicationStatus.ObservedGeneration = app.Generation
 	newApplicationStatus.ComponentList = appv1beta1.ComponentList{
@@ -98,7 +98,7 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		return ctrl.Result{}, nil
 	}
 
-	app.Status = newApplicationStatus
+	app.Status = *newApplicationStatus
 	err = r.Client.Status().Update(ctx, &app) // Should we use retry here?
 	return ctrl.Result{}, err
 }
