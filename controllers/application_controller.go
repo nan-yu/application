@@ -140,19 +140,21 @@ func (r *ApplicationReconciler) setOwnerRefForResources(ctx context.Context, own
 	logger := getLoggerOrDie(ctx)
 	for _, resource := range resources {
 		ownerRefs := resource.GetOwnerReferences()
+		ownerRefFound := false
 		for i, refs := range ownerRefs {
 			if ownerRef.Kind == refs.Kind &&
 				ownerRef.APIVersion == refs.APIVersion &&
 				ownerRef.Name == refs.Name {
-				if ownerRef.UID == refs.UID {
-					continue
+				ownerRefFound = true
+				if ownerRef.UID != refs.UID {
+					ownerRefs[i] = ownerRef
 				}
-				ownerRefs[i] = ownerRef
 			}
 		}
 
-		// If we got here, it means we didn't find an owner ref. So we just set one.
-		ownerRefs = append(ownerRefs, ownerRef)
+		if !ownerRefFound {
+			ownerRefs = append(ownerRefs, ownerRef)
+		}
 		resource.SetOwnerReferences(ownerRefs)
 		err := r.Client.Update(ctx, resource)
 		if err != nil {
