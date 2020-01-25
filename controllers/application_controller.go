@@ -75,6 +75,7 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	if app.Spec.AddOwnerRef {
 		ownerRef := metav1.NewControllerRef(&app, appv1beta1.GroupVersion.WithKind("Application"))
+		*ownerRef.Controller = false
 		if err := r.setOwnerRefForResources(ctx, *ownerRef, resources); err != nil {
 			return ctrl.Result{Requeue: true}, err
 		}
