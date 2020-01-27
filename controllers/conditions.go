@@ -10,9 +10,19 @@ func setReadyCondition(appStatus *appv1beta1.ApplicationStatus, reason, message 
 	setCondition(appStatus, appv1beta1.Ready, reason, message)
 }
 
-// NotReady - shortcut to set ready contition to false
+// NotReady - shortcut to set ready condition to false
 func setNotReadyCondition(appStatus *appv1beta1.ApplicationStatus, reason, message string) {
 	clearCondition(appStatus, appv1beta1.Ready, reason, message)
+}
+
+// setErrorCondition - shortcut to set error condition
+func setErrorCondition(appStatus *appv1beta1.ApplicationStatus, reason, message string) {
+	setCondition(appStatus, appv1beta1.Error, reason, message)
+}
+
+// clearErrorCondition - shortcut to set error condition
+func clearErrorCondition(appStatus *appv1beta1.ApplicationStatus) {
+	clearCondition(appStatus, appv1beta1.Error, "NoError", "No error seen")
 }
 
 func setCondition(appStatus *appv1beta1.ApplicationStatus, ctype appv1beta1.ConditionType, reason, message string) {

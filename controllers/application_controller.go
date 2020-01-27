@@ -70,18 +70,38 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		return ctrl.Result{}, nil
 	}
 
+	newApplicationStatus := r.getNewApplicationStatus(ctx, &app)
+
+	if equality.Semantic.DeepEqual(newApplicationStatus, &app.Status) {
+		return ctrl.Result{}, nil
+	}
+
+	newApplicationStatus.ObservedGeneration = app.Generation
+	if err = r.updateApplicationStatus(ctx, req.NamespacedName, newApplicationStatus); err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *ApplicationReconciler) updateComponents(ctx context.Context, app *appv1beta1.Application) ([]*unstructured.Unstructured, error) {
 	resources, err := r.fetchComponentListResources(ctx, app.Spec.ComponentGroupKinds, app.Spec.Selector, app.Namespace)
 	if err != nil {
-		return ctrl.Result{Requeue: true}, err
+		return resources, err
 	}
 
 	if app.Spec.AddOwnerRef {
-		ownerRef := metav1.NewControllerRef(&app, appv1beta1.GroupVersion.WithKind("Application"))
+		ownerRef := metav1.NewControllerRef(app, appv1beta1.GroupVersion.WithKind("Application"))
 		*ownerRef.Controller = false
 		if err := r.setOwnerRefForResources(ctx, *ownerRef, resources); err != nil {
-			return ctrl.Result{Requeue: true}, err
+			return resources, err
 		}
 	}
+	return resources, nil
+}
+
+func (r *ApplicationReconciler) getNewApplicationStatus(ctx context.Context, app *appv1beta1.Application) *appv1beta1.ApplicationStatus {
+
+	resources, err := r.updateComponents(ctx, app)
 
 	objectStatuses := r.objectStatuses(ctx, resources)
 	aggReady := aggregateReady(objectStatuses)
@@ -98,17 +118,13 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		setNotReadyCondition(newApplicationStatus, "ComponentsNotReady", "some components not ready")
 	}
 
-	// TODO: Error conditions
-
-	if equality.Semantic.DeepEqual(newApplicationStatus, &app.Status) {
-		return ctrl.Result{}, nil
+	if err != nil {
+		setErrorCondition(newApplicationStatus, "ErrorSeen", err.Error())
+	} else {
+		clearErrorCondition(newApplicationStatus)
 	}
 
-	newApplicationStatus.ObservedGeneration = app.Generation
-	if err = r.updateApplicationStatus(ctx, req.NamespacedName, newApplicationStatus); err != nil {
-		return ctrl.Result{Requeue: true}, err
-	}
-	return ctrl.Result{}, nil
+	return newApplicationStatus
 }
 
 func (r *ApplicationReconciler) fetchComponentListResources(ctx context.Context, groupKinds []metav1.GroupKind, selector *metav1.LabelSelector, namespace string) ([]*unstructured.Unstructured, error) {
