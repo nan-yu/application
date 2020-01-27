@@ -18,16 +18,18 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -86,7 +88,6 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	newApplicationStatus := app.Status.DeepCopy()
 
-	newApplicationStatus.ObservedGeneration = app.Generation
 	newApplicationStatus.ComponentList = appv1beta1.ComponentList{
 		Objects: objectStatuses,
 	}
@@ -99,12 +100,12 @@ func (r *ApplicationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	// TODO: Error conditions
 
-	if equality.Semantic.DeepEqual(newApplicationStatus, app.Status) {
+	if equality.Semantic.DeepEqual(newApplicationStatus, &app.Status) {
 		return ctrl.Result{}, nil
 	}
 
-	app.Status = *newApplicationStatus
-	if err = r.Client.Update(ctx, &app); err != nil {
+	newApplicationStatus.ObservedGeneration = app.Generation
+	if err = r.updateApplicationStatus(ctx, req.NamespacedName, newApplicationStatus); err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
 	return ctrl.Result{}, nil
@@ -196,6 +197,23 @@ func aggregateReady(objectStatuses []appv1beta1.ObjectStatus) bool {
 		}
 	}
 	return true
+}
+
+func (r *ApplicationReconciler) updateApplicationStatus(ctx context.Context, nn types.NamespacedName, status *appv1beta1.ApplicationStatus) error {
+	if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		original := &appv1beta1.Application{}
+		if err := r.Get(ctx, nn, original); err != nil {
+			return err
+		}
+		original.Status = *status
+		if err := r.Update(ctx, original); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to update status of Application %s/%s: %v", nn.Namespace, nn.Name, err)
+	}
+	return nil
 }
 
 func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
