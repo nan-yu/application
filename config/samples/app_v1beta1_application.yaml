@@ -28,11 +28,11 @@ spec:
       type: "image/png"
     assemblyPhase: "Pending"
     maintainers:
-    - name: Kenneth Owens
-      email: kow3ns@github.com
+    - name: wordpress dev
+      email: wpdev@cwdomaingithub.com
     owners:
-    - name: Kenneth Owens
-      email: kow3ns@github.com
+    - name: wordpress admin
+      email: wpadmin@github.com
     keywords:
     - "cms"
     - "blog"

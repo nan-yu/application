@@ -1,3 +1,7 @@
+# e2e pid files
+manager.pid
+manager.log
+
 # OSX leaves these everywhere on SMB shares
 ._*
 

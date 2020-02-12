@@ -27,11 +27,11 @@ spec:
       type: "image/png"
       size: "2000x680"
   maintainers:
-    - name: Kenneth Owens
-      email: kow3ns@github.com
+    - name: App Admin
+      email: appadmin@domain.com
   owners:
-    - name: Kenneth Owens
-      email: kow3ns@github.com
+    - name: App Owner
+      email: appowner@domain.com
   keywords:
    - "cms"
    - "blog"

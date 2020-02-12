@@ -89,8 +89,8 @@ test: $(TOOLBIN)/etcd $(TOOLBIN)/kube-apiserver $(TOOLBIN)/kubectl
 
 # Run e2e-tests
 .PHONY: e2e-test
-e2e-test: generate fmt vet manifests $(TOOLBIN)/kind
-	BIN=$(TOOLBIN) ./e2e/test_e2e.sh
+e2e-test: generate fmt vet manifests $(TOOLBIN)/kind $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
+	BIN=$(TOOLBIN) ./e2e/run_e2e_test.sh
 
 ## --------------------------------------
 ## Build and run
@@ -101,9 +101,14 @@ bin/manager: main.go generate fmt vet manifests
 	go build -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
+.PHONY: runbg
+runbg: bin/manager
+	bin/manager --metrics-addr ":8083" >& manager.log & echo $$! > manager.pid
+
+# Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
-run: generate fmt vet manifests
-	go run ./main.go
+run: bin/manager
+	bin/manager
 
 # Debug using the configured Kubernetes cluster in ~/.kube/config
 .PHONY: debug
@@ -153,36 +158,36 @@ misspell-fix: $(TOOLBIN)/misspell
 
 # Install CRDs into a cluster
 .PHONY: install
-install: $(TOOLBIN)/kustomize
-	$(TOOLBIN)/kustomize build config/crd| kubectl apply -f -
+install: $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
+	$(TOOLBIN)/kustomize build config/crd| $(TOOLBIN)/kubectl apply -f -
 
 # Uninstall CRDs from a cluster
 .PHONY: uninstall
-uninstall: $(TOOLBIN)/kustomize
-	$(TOOLBIN)/kustomize build config/crd| kubectl delete -f -
+uninstall: $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
+	$(TOOLBIN)/kustomize build config/crd| $(TOOLBIN)/kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 .PHONY: deploy
-deploy: $(TOOLBIN)/kustomize
+deploy: $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
 	cd config/manager && $(TOOLBIN)/kustomize edit set image controller=$(CONTROLLER_IMG)-$(ARCH):$(TAG)
-	$(TOOLBIN)/kustomize build config/default | kubectl apply -f -
+	$(TOOLBIN)/kustomize build config/default | $(TOOLBIN)/kubectl apply -f -
 
 # unDeploy controller in the configured Kubernetes cluster in ~/.kube/config
 .PHONY: undeploy
-undeploy: $(TOOLBIN)/kustomize
-	$(TOOLBIN)/kustomize build config/default | kubectl delete -f -
+undeploy: $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
+	$(TOOLBIN)/kustomize build config/default | $(TOOLBIN)/kubectl delete -f -
 
 # Deploy wordpress
 .PHONY: deploy-wordpress
-deploy-wordpress: $(TOOLBIN)/kustomize
+deploy-wordpress: $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
 	mkdir -p /tmp/data1 /tmp/data2
-	$(TOOLBIN)/kustomize build docs/examples/wordpress | kubectl apply -f -
+	$(TOOLBIN)/kustomize build docs/examples/wordpress | $(TOOLBIN)/kubectl apply -f -
 
 # Uneploy wordpress
 .PHONY: undeploy-wordpress
-undeploy-wordpress: $(TOOLBIN)/kustomize
-	$(TOOLBIN)/kustomize build docs/examples/wordpress | kubectl delete -f -
-	# kubectl delete pvc --all
+undeploy-wordpress: $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
+	$(TOOLBIN)/kustomize build docs/examples/wordpress | $(TOOLBIN)/kubectl delete -f -
+	# $(TOOLBIN)/kubectl delete pvc --all
 	# sudo rm -fr /tmp/data1 /tmp/data2
 
 ## --------------------------------------

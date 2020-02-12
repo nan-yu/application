@@ -219,10 +219,10 @@ spec:
         type: "image/png"
     type: "wordpress"
     maintainers:
-      - name: Kenneth Owens
-        email: kow3ns@github.com
+      - name: Wordpress Dev
+        email: wpdev@domain.com
     owners:
-      - "Kenneth Owens kow3ns@github.com"
+      - "Wordpress Admin wpadmin@domain.com"
     keywords:
       - "cms"
       - "blog"
