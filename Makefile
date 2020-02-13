@@ -89,7 +89,7 @@ test: $(TOOLBIN)/etcd $(TOOLBIN)/kube-apiserver $(TOOLBIN)/kubectl
 
 # Run e2e-tests
 .PHONY: e2e-test
-e2e-test: generate fmt vet manifests $(TOOLBIN)/kind $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl
+e2e-test: generate fmt vet manifests $(TOOLBIN)/kind $(TOOLBIN)/kustomize $(TOOLBIN)/kubectl bin/manager
 	BIN=$(TOOLBIN) ./e2e/run_e2e_test.sh
 
 ## --------------------------------------
