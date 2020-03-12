@@ -17,7 +17,7 @@ Run locally
 make e2e-setup
 
 # install CRD
-make install
+make deploy-crd
 
 # run locally
 make run
@@ -28,9 +28,8 @@ make e2e-cleanup
 
 Run against cluster
 ```bash
-# The default image is `gcr.io/$(shell gcloud config get-value project)/application-controller`
-# to use different image 
-export CONTROLLER_IMG=<image>
+# The default image is `gcr.io/$(shell gcloud config get-value project)/kube-app-manager`
+# to use different image edit VERSION-DEV file
 
 # build docker image
 make docker-build
