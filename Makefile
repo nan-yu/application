@@ -8,7 +8,7 @@ VERSION_FILE ?= VERSION-DEV
 include $(VERSION_FILE)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false,crdVersions={v1beta1,v1}"
+CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false,crdVersions=v1"
 
 # Releases should modify and double check these vars.
 VER ?= v${app_major}.${app_minor}.${app_patch}
@@ -49,7 +49,7 @@ all: generate fix vet fmt manifests test lint license misspell tidy bin/kube-app
 ## Tooling Binaries
 ## --------------------------------------
 
-$(TOOLBIN)/controller-gen:
+$(TOOLBIN)/controller-gen: $(TOOLBIN)/kubectl
 	GOBIN=$(TOOLBIN) GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0
 
 $(TOOLBIN)/golangci-lint:
@@ -63,6 +63,7 @@ $(TOOLBIN)/conversion-gen:
 
 $(TOOLBIN)/kubebuilder $(TOOLBIN)/etcd $(TOOLBIN)/kube-apiserver $(TOOLBIN)/kubectl:
 	cd $(TOOLS_DIR); ./install_kubebuilder.sh
+	cp $(TOOLBIN)/kubectl $(HOME)/bin
 
 $(TOOLBIN)/kustomize:
 	cd $(TOOLS_DIR); ./install_kustomize.sh
@@ -95,6 +96,11 @@ install-tools: \
 # Run tests
 .PHONY: test
 test: $(TOOLBIN)/etcd $(TOOLBIN)/kube-apiserver $(TOOLBIN)/kubectl
+	echo "PATH=${PATH}"
+	which kubectl || true
+	ls -al ~/bin || true
+	ls -al $(TOOLBIN)
+	cp $(TOOLBIN)/kubectl /bin
 	TEST_ASSET_KUBECTL=$(TOOLBIN)/kubectl \
 	TEST_ASSET_KUBE_APISERVER=$(TOOLBIN)/kube-apiserver \
 	TEST_ASSET_ETCD=$(TOOLBIN)/etcd \
