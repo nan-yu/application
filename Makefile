@@ -49,7 +49,7 @@ all: generate fix vet fmt manifests test lint license misspell tidy bin/kube-app
 ## Tooling Binaries
 ## --------------------------------------
 
-$(TOOLBIN)/controller-gen: $(TOOLBIN)/kubectl
+$(TOOLBIN)/controller-gen:
 	GOBIN=$(TOOLBIN) GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0
 
 $(TOOLBIN)/golangci-lint:
@@ -63,7 +63,6 @@ $(TOOLBIN)/conversion-gen:
 
 $(TOOLBIN)/kubebuilder $(TOOLBIN)/etcd $(TOOLBIN)/kube-apiserver $(TOOLBIN)/kubectl:
 	cd $(TOOLS_DIR); ./install_kubebuilder.sh
-	cp $(TOOLBIN)/kubectl $(HOME)/bin
 
 $(TOOLBIN)/kustomize:
 	cd $(TOOLS_DIR); ./install_kustomize.sh
